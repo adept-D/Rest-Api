@@ -1,7 +1,9 @@
 package Tokens
 
 import (
+	"errors"
 	"github.com/golang-jwt/jwt"
+	"log"
 	"os"
 	"time"
 )
@@ -17,12 +19,10 @@ type RefreshToken struct {
 	jwt.StandardClaims
 }
 
-/*
 type Tokens struct {
-	*AccessToken
-	*RefreshToken
+	AccessToken  *AccessToken
+	RefreshToken *RefreshToken
 }
-*/
 
 func GeneratePairTokens() (*AccessToken, *RefreshToken, error) {
 	at := &AccessToken{
@@ -32,7 +32,7 @@ func GeneratePairTokens() (*AccessToken, *RefreshToken, error) {
 		},
 	}
 
-	tokenWithoutKey := jwt.NewWithClaims(jwt.SigningMethodHS512,at.StandardClaims)
+	tokenWithoutKey := jwt.NewWithClaims(jwt.SigningMethodHS512, at.StandardClaims)
 	accessToken, err := tokenWithoutKey.SignedString([]byte(os.Getenv("ACCESS_SECRET")))
 	if err != nil {
 		return nil, nil, err
@@ -46,7 +46,7 @@ func GeneratePairTokens() (*AccessToken, *RefreshToken, error) {
 		},
 	}
 
-	tokenWithoutKey = jwt.NewWithClaims(jwt.SigningMethodHS512,rt.StandardClaims)
+	tokenWithoutKey = jwt.NewWithClaims(jwt.SigningMethodHS512, rt.StandardClaims)
 	refreshToken, err := tokenWithoutKey.SignedString([]byte(os.Getenv("REFRESH_SECRET")))
 	if err != nil {
 		return nil, nil, err
@@ -56,3 +56,25 @@ func GeneratePairTokens() (*AccessToken, *RefreshToken, error) {
 	return at, rt, nil
 }
 
+func (t *Tokens) InitTokens() (*Tokens, error) { //constructor
+	log.Println("Tokens initialized...")
+	at, rt, err := GeneratePairTokens()
+	if err != nil {
+		return nil, err
+	}
+	return &Tokens{
+		AccessToken:  at,
+		RefreshToken: rt,
+	}, nil
+}
+
+func (t *Tokens) GetTokens() (*Tokens, error) {
+	if t.AccessToken == nil || t.RefreshToken == nil {
+		return nil, errors.New("nullptr objects error")
+	}
+
+	return &Tokens{
+		AccessToken:  t.AccessToken,
+		RefreshToken: t.RefreshToken,
+	}, nil
+}

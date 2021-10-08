@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"golang.org/x/crypto/bcrypt"
 	"log"
-	server "maked2/Server"
+	tokens "maked2/Server/Tokens"
 	"os"
 	"time"
 )
@@ -21,8 +21,8 @@ type Config struct {
 
 type DataBase struct {
 	RefreshKey string `json:"refresh_key"`
-	Expression int64 `json:"expression"`
-	GUID string `json:"guid"`
+	Expression int64  `json:"expression"`
+	//GUID string `json:"guid"`
 }
 
 func (c *Config) SetConfig(client *mongo.Client) error {
@@ -35,26 +35,25 @@ func (c *Config) SetConfig(client *mongo.Client) error {
 
 var config = &Config{}
 
-
 func (db *DataBase) ConnectToMongo() error {
 	url := os.Getenv("MONGODB_URL")
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(url))
 
-	if err != nil{
-		return  err
+	if err != nil {
+		return err
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	err = client.Connect(ctx)
 	if err != nil {
-		return  err
+		return err
 	}
 	//defer client.Disconnect(ctx)
 
 	err = client.Ping(ctx, readpref.Primary())
 	if err != nil {
-		return  err
+		return err
 	}
 
 	err = config.SetConfig(client)
@@ -62,40 +61,39 @@ func (db *DataBase) ConnectToMongo() error {
 		return err
 	}
 
-	return  nil
+	return nil
 
 }
 
-func (db *DataBase) InsertInfoToDB(tokens *server.Tokens, GUID string) error {
+func (db *DataBase) InsertInfoToDB(tokensInfo *tokens.Tokens) error {
 	err := db.ConnectToMongo()
 	if err != nil {
 		return err
 	}
 
-	hashRefreshKey, err := HashPassword(tokens.RefreshToken.Token)
-	if err != nil{
-		return  err
+
+
+	hashRefreshKey, err := HashPassword(tokensInfo.RefreshToken.Token)
+	if err != nil {
+		return err
 	}
 
 	collection := config.client.Database("Refresh_Token").Collection("refresh")
 
 	db.RefreshKey = hashRefreshKey
-	//	token, err := refreshToken.CreateToken()
 	if err != nil {
 		return err
 	}
-	db.Expression = tokens.RefreshToken.ExpiresAt
-	db.GUID = GUID
+	db.Expression = tokensInfo.RefreshToken.ExpiresAt
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	defer config.client.Disconnect(ctx)
 
-
-	_, err = collection.InsertOne(ctx,db)
+	_, err = collection.InsertOne(ctx, db)
 	fmt.Println("Insert Values to MongoDB")
 
-	if err != nil{
-		log.Fatal("InsertOne error ",err)
+	if err != nil {
+		log.Fatal("InsertOne error ", err)
 	}
 	if err != nil {
 		return err
@@ -104,11 +102,9 @@ func (db *DataBase) InsertInfoToDB(tokens *server.Tokens, GUID string) error {
 	return nil
 }
 
-
-
-func (db *DataBase) GetHashRefreshKey(tokens *server.Tokens) (isValid  bool,err error) {
+func (db *DataBase) GetHashRefreshKey(tokensInfo *tokens.Tokens) (isValid bool, err error) {
 	err = db.ConnectToMongo()
-	if err != nil{
+	if err != nil {
 		return false, err
 	}
 	collection := config.client.Database("Refresh_Token").Collection("refresh")
@@ -127,30 +123,25 @@ func (db *DataBase) GetHashRefreshKey(tokens *server.Tokens) (isValid  bool,err 
 		"refresh_key": episodes[0]["refreshkey"].(string),
 	}
 	//fmt.Println(tokens.RefreshToken.Token)
-	err = bcrypt.CompareHashAndPassword([]byte(validateInfo["refresh_key"]),[]byte(tokens.RefreshToken.Token))
-	if err != nil{
+	err = bcrypt.CompareHashAndPassword([]byte(validateInfo["refresh_key"]), []byte(tokensInfo.RefreshToken.Token))
+	if err != nil {
 		return false, err
 	}
 
-	res, err := collection.DeleteOne(ctx, bson.M{"refreshkey": validateInfo["refresh_key"]})
+	_, err = collection.DeleteOne(ctx, bson.M{"refreshkey": validateInfo["refresh_key"]})
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("deleted %v documents\n", res.DeletedCount)
 
-	return true,nil
-
-	//fmt.Println(episodes[0]["guid"])
-
+	return true, nil
 
 }
 
+
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	if err != nil{
+	if err != nil {
 		return "", err
 	}
 	return string(bytes), err
 }
-
-

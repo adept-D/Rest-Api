@@ -4,10 +4,9 @@ import "net/http"
 import handlers "maked2/Server/Handlers"
 
 func StartServer() error {
-	http.HandleFunc("/login",handlers.HelloHandler )
-	http.HandleFunc("/", handlers.IsAuth(handlers.Login))
-	http.HandleFunc("/refresh",handlers.Refresh)
-	//	http.HandleFunc("/login/auth", nil)
+	http.HandleFunc("/", handlers.HomePage)
+	http.HandleFunc("/login", handlers.IsAuth(handlers.Login))
+	http.HandleFunc("/refresh", handlers.Refresh)
 
 	err := http.ListenAndServe(":3000", nil)
 
