@@ -13,5 +13,3 @@
   
   После перехода по данному адресу проверяется Access и Refresh токен из базы данных, если все нормально, то из базы данных удаляется предыдущий Refresh токен и выдаются новые токены, Access токен в Cookie, Refersh в MongoDB.
 
-
-![alt-текст](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Текст заголовка логотипа 1")
